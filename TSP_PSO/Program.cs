@@ -12,7 +12,7 @@ namespace PSO
             // variables setting up for PSO
             //int dimension = 2;
             int numOfParticles = 5;
-            int maxIter = 5;
+            int maxIter = 5000;
             //double exitError = 0.0;
             //double minX = 0.0;
             //double maxX = 0.0;
@@ -73,9 +73,11 @@ namespace PSO
             String line;
             while ((line = sr.ReadLine())!=null)
             {
+                int ID = -1;
                 String[] tokens = line.Split(',');
                 Node c = new Node();
-                c.id = tokens[0];
+                Int32.TryParse(tokens[0], out ID);
+                c.id = ID;
                 c.latitude = tokens[1];
                 c.longitude = tokens[2];
                 nodes.Add(c);
@@ -157,7 +159,7 @@ namespace PSO
 
             for (int i = availableNodes.Count; i > 0; i--)
             {
-                int j = random.Next(0, availableNodes.Count - 1);
+                int j = random.Next(0, availableNodes.Count);
                 initSeq.Add(availableNodes[j]);
                 availableNodes.Remove(availableNodes[j]);
             }
@@ -174,7 +176,7 @@ namespace PSO
             do
             {
                 for (int i = 0; i < swap.Length; i++)
-                    swap[i] = random.Next(0, nodes.Count - 1);
+                    swap[i] = random.Next(1, nodes.Count);
             } while (swap[0].Equals(swap[1]));
             
             return swap;
@@ -199,11 +201,10 @@ namespace PSO
         //find the index number of the swap operator in list
         static int findNum(List<Node> nodes, int numToFind)
         {
-            int ID = -1;
+            //Console.WriteLine("Num to find:" + numToFind);
             for (int i = 0; i < nodes.Count; i++)
             {
-                Int32.TryParse(nodes[i].getID(), out ID);
-                if (ID == numToFind)
+                if (nodes[i].id == numToFind)
                 {
                     return i;
                     //nodes.FindIndex(nodes[i].id);
@@ -211,7 +212,7 @@ namespace PSO
                     //break;
                 } 
             }
-            return ID;
+            return -1;
         }
 
         //swapping the position of nodes based on the swap sequence
@@ -229,14 +230,15 @@ namespace PSO
             //access the swap operators in the swap sequence
             for (int i = 0; i < swapSeq.Count; i++)
             {
-                int source = (int)swapSeq[i].GetValue(0); //the point that needed to be switch
-                int target = (int)swapSeq[i].GetValue(1); //the point that need to be switch with the source
+                //source and target will be 1 to 14
+                int source = (int)swapSeq[i][0]; //the point that needed to be switch
+                int target = (int)swapSeq[i][1]; //the point that need to be switch with the source
 
                 int sourceIndex = findNum(foundedRoute, source); //the index of source in the founded route
                 int targetIndex = findNum(foundedRoute, target); //the index of target in the founded route
                 //Console.WriteLine(sourceIndex);
-                Console.WriteLine(targetIndex);
-                swapIndex(nodes, sourceIndex, targetIndex);
+                //Console.WriteLine(targetIndex);
+                swapIndex(foundedRoute, sourceIndex, targetIndex);
                 //Node temp = foundedRoute[sourceIndex]; //idk why here will get out of bound when first run
                 //foundedRoute[sourceIndex] = foundedRoute[targetIndex];
                 //foundedRoute[targetIndex] = temp;
@@ -254,11 +256,11 @@ namespace PSO
         //node class
         public class Node
         {
-            public string id;
+            public int id;
             public string latitude;
             public string longitude;
 
-            public string getID()
+            public int getID()
             {
                 return this.id;
             }
@@ -284,14 +286,12 @@ namespace PSO
             int index; //store the index we need to find
             int[] swapOperator = new int[2]; // the things that we need to swap
             //check the difference of the order of city in the route
-            for (int i = 0; i < current.Count; i++)
+            for (int i = 0; i < currentList.Count; i++)
             {
                 if (best[i].id != currentList[i].id)
                 {
-                    int ID;
-                    Int32.TryParse(best[i].getID(), out ID);
                     //find the index of the city that is different
-                    index = findNum(currentList, ID);
+                    index = findNum(currentList, best[i].id);
                     //Console.WriteLine(index);
                     //swap the index with i
                     swapIndex(currentList, i, index);
@@ -354,7 +354,7 @@ namespace PSO
             int eachItr = 0;
 
             //int[] newSwapOperator;
-            List<int[]> newSwapSequence = new List<int[]>();
+            
             double newTimeNeeded;
 
             //main loop
@@ -363,9 +363,10 @@ namespace PSO
                 Console.WriteLine(eachItr);
                 for (int i = 0; i < particle.Length; i++) //to access each particle
                 {
+                    List<int[]> newSwapSequence = new List<int[]>();
                     Particle currentParticle = particle[i];
 
-                    
+                  
                     int len; //access the number of SO in the swap sequence
                     //new swap sequence
                     //swap sequence = velocity
@@ -374,20 +375,21 @@ namespace PSO
                     
                     //vid
                     len = currentParticle.swapSequence.Count;
-                    //new vid=vid
-                    for (int j = 0; j < len; j++)
+                    //len = (int) (currentParticle.swapSequence.Count * random.NextDouble());
+                //new vid=vid
+                for (int j = 0; j < len; j++)
                         newSwapSequence.Add(currentParticle.swapSequence[j]);
                     //(Pid−Xid)
                     List<int[]> swapSequenceLocal = minus(currentParticle.bestRoute, currentParticle.foundedRoute);
                     //α∗(Pid−Xid)
-                    len = swapSequenceLocal.Count * random.Next(0, 2);//return only 0 or 1
+                    len = (int) (swapSequenceLocal.Count * random.NextDouble());
                     //new vid=vid⊕α∗(Pid−Xid)
                     for (int j = 0; j < len; j++)
                         newSwapSequence.Add(swapSequenceLocal[j]);
                     //(Pgd−Xid)
                     List<int[]> swapSequenceGlobal = minus(bestRoute, currentParticle.foundedRoute);
                     //β∗(Pgd−Xid)
-                    len = swapSequenceGlobal.Count * random.Next(0, 2);
+                    len = (int) (swapSequenceGlobal.Count * random.NextDouble());
                     // new vid=vid⊕α∗(Pid−Xid)⊕β∗(Pgd−Xid)
                     for (int j = 0; j < len; j++)
                         newSwapSequence.Add(swapSequenceGlobal[j]);
